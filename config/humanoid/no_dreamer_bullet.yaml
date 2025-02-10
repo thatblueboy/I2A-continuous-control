@@ -8,16 +8,16 @@ environment:
 
 ppo_hyperparameters:
   policy: 'MlpPolicy'
-  batch_size: 256
-  n_steps: 512
+  batch_size: 64
+  n_steps: 2048
   device: 'cpu'
   gamma: 0.95
-  learning_rate: 3.56987e-05
-  ent_coef: 0.00238306
-  clip_range: 0.3
-  n_epochs: 5
-  gae_lambda: 0.9
-  max_grad_norm: 2
+  learning_rate: 2.5e-4
+  ent_coef: 0
+  clip_range: 0.2
+  n_epochs: 10
+  gae_lambda: 0.95
+  # max_grad_norm: 2
   vf_coef: 0.431892
   verbose: 1
   policy_kwargs:

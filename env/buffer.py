@@ -35,7 +35,7 @@ class Buffer:
             self.buffer[self.position] = transition
         self.position = (self.position + 1) % self.buffer_size
 
-    def generate_batches(self, num_batches=1):
+    def generate_batches(self, buffer=None, batch_size=None, num_batches=None):
         """
         Generate batches of transitions for training, yielding them based on the number of batches requested.
         First shuffles the buffer, then loops the buffer size // batch size number of times to yield batches.
@@ -43,18 +43,29 @@ class Buffer:
         :param num_batches: Number of batches to yield.
         :return: Yields a batch of transitions as (states, actions, rewards, next_states, dones).
         """
-        # Check if there's enough data for at least one batch
-        if len(self.buffer) < self.batch_size:
+
+        if buffer is None:
+            buffer = self.buffer
+        
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        if len(buffer) < batch_size:
             raise ValueError("Not enough data in buffer to generate a batch.")
+
+        if num_batches is None:
+            print(len(buffer))
+            num_batches = len(buffer)//batch_size
         
         # Shuffle the buffer before generating batches
-        random.shuffle(self.buffer)
+        random.shuffle(buffer)
 
         # Loop through the buffer in chunks of batch_size
         for _ in range(num_batches):
+            print(_)
             # Create a batch by slicing the shuffled buffer
-            batch = self.buffer[:self.batch_size]
-            self.buffer = self.buffer[self.batch_size:]  # Update buffer to remove the used batch
+            batch = self.buffer[:batch_size]
+            buffer = buffer[batch_size:]  # Update buffer to remove the used batch
 
             # Separate the batch into states, actions, rewards, next_states, and dones
             states, actions, rewards, next_states, dones = zip(*batch)

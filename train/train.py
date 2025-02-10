@@ -18,32 +18,43 @@ import torch
 
 # YAML configuration as a string
 DEFAULT_CONFIG_YAML = """
-environment:
-  name: "Ant-v5"
-  wrapper: "DreamWrapper"
-#   wrapper: None
+expt_name: test
 
-  n_future_steps: 5
-  n_steps: 1024
+environment:
+  name: "Humanoid-v5"              # Name of the Gymnasium environment
+  wrapper: DreamWrapper       # Wrapper for the environment (e.g., DreamWrapper or None)
+  history: 0
+  n_future_steps: 0         # Number of future steps for the wrapper (if using DreamWrapper)
+  n_steps: 1024                # Number of steps in each environment rollout (for training)
+  p_hidden: [256, 128, 64, 32] #384, 17
+  d_hidden: [2048, 1024, 512] #17+384,  ?, 384
 
 ppo_hyperparameters:
-  policy: "MlpPolicy"
+  policy: 'MlpPolicy'
+  batch_size: 256
   n_steps: 512
-  batch_size: 32
-  gamma: 0.98
-  learning_rate: 1.90609e-05
-  ent_coef: 4.9646e-07
-  clip_range: 0.1
-  n_epochs: 10
-  gae_lambda: 0.8
-  max_grad_norm: 0.6
-  vf_coef: 0.677239
+  device: 'cpu'
+  gamma: 0.95
+  learning_rate: 3.56987e-05
+  ent_coef: 0.00238306
+  clip_range: 0.3
+  n_epochs: 5
+  gae_lambda: 0.9
+  max_grad_norm: 2
+  vf_coef: 0.431892
   verbose: 1
-  device: "cpu"
+  policy_kwargs:
+    log_std_init: -2
+    ortho_init: False
+    activation_fn: "ReLU"
+    net_arch:
+      pi: [256, 256]
+      vf: [256, 256]
 
 training:
-  total_timesteps: 10000000
-  save_wrapper_state_path: "dreamer_state_dict.pth"
+  seed: 32  
+  total_timesteps: 1    # Total number of timesteps to train the model
+  save_wrapper_state_path: "dreamer_state_dict.pth" # Path to save the dreamer model state
 """
 
 # Function to load the YAML configuration
@@ -69,29 +80,19 @@ def parse_args():
     parser.add_argument('--name', type=str)
     return parser.parse_args()
 
-# Load the YAML config
-# CONFIG = yaml.safe_load(CONFIG_YAML)
-
-# Main script
-if __name__ == "__main__":
-    # Parse arguments
-    args = parse_args()
-
-    # Load the configuration (either from file or default)
-    CONFIG = load_config(args.config)
-
-    seed = 42
-
+def train(CONFIG):
     env_name = CONFIG["environment"]["name"]
+
     algo_name = "PPO"
-    LOGS_ROOT_PATH = os.path.join("/home/thatblueboy/DOP/logs", env_name + "_" +algo_name+"_"+str(seed))
-    #     EXPT_NAME = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    EXPT_NAME = args.name
-    # EXPT_NAME = args["name"]
+    LOGS_ROOT_PATH = os.path.join("/home/thatblueboy/DOP/logs", env_name + "_" +algo_name)
+
+    EXPT_NAME = CONFIG["expt_name"]
+    
     MODELS_PATH = os.path.join(LOGS_ROOT_PATH, "models", EXPT_NAME)
     DREAMER_PATH = os.path.join(LOGS_ROOT_PATH, "dreamers", EXPT_NAME)
-    # if os.path.exists(MODELS_PATH):
-    #     sys.exit(f"Error: Experiment already exists!!")
+    if EXPT_NAME != "test":
+        if os.path.exists(MODELS_PATH):
+            sys.exit(f"Error: Experiment already exists!!")
     # Load config values
     wrapper = CONFIG["environment"]["wrapper"]
     n_future_steps = CONFIG["environment"]["n_future_steps"]
@@ -99,21 +100,38 @@ if __name__ == "__main__":
 
     # Environment setup
     env = gym.make(env_name)
-    # env.seed(seed)
-    print("wrapper is", wrapper)
-    if wrapper == "DreamWrapper":
-        print("Dreaming!!")
-        wrapped_env = DreamWrapper(env, n_future_steps=n_future_steps, n_steps=n_steps,n_steps_dreamer=1024, dreamer_save_path=DREAMER_PATH)
-    else:
-        print("standard environment")
-        wrapped_env = env
 
-    # PPO hyperparameters
-    hyperparams = CONFIG["ppo_hyperparameters"]
+    print("wrapper is", wrapper)
+    # if wrapper == "DreamWrapper":
+    #     print("Dreaming!!")
+    #     wrapped_env = DreamWrapper(env, 
+    #                                history_len=CONFIG["environment"]["history"],
+    #                                n_future_steps=n_future_steps,
+    #                                 n_steps=n_steps, 
+    #                                 n_steps_dreamer=n_steps,
+    #                                 policy_hidden_layers=CONFIG["environment"]["p_hidden"],
+    #                                 dynamics_hidden_layers=CONFIG["environment"]["d_hidden"],
+    #                                 dreamer_save_path=DREAMER_PATH)
+    # else:
+    #     print("standard environment")
+    #     wrapped_env = env
+
+    wrapped_env = DreamWrapper(env, 
+                                history_len=CONFIG["environment"]["history"],
+                                n_future_steps=n_future_steps,
+                                 n_steps=n_steps, 
+                                 n_steps_dreamer=n_steps,
+                                 policy_hidden_layers=CONFIG["environment"]["p_hidden"],
+                                 dynamics_hidden_layers=CONFIG["environment"]["d_hidden"],
+                                 dreamer_save_path=DREAMER_PATH)
 
     # Initialize PPO
-    ppo_model = PPO(**hyperparams, env=wrapped_env, seed=seed)
+    ppo_model = PPO(**CONFIG["ppo_hyperparameters"],
+                    env=wrapped_env, 
+                    seed=CONFIG["training"]["seed"])
     ppo_model.set_logger(configure(MODELS_PATH, ["tensorboard","stdout"]))
+
+    print("PPO model", ppo_model.policy)
 
     # Train the model
     print("Training started...")
@@ -123,7 +141,23 @@ if __name__ == "__main__":
 
     # Save the model and wrapper state
     # TODO dreamer/wrapper should save dreamer
-    if wrapper == "DreamWrapper":
+    if n_future_steps > 0:
         torch.save(wrapped_env.dreamer.state_dict(), os.path.join(DREAMER_PATH, "dreamer_state_dict.pth"))
     ppo_model.save(os.path.join(MODELS_PATH, "model"))
     print("Model and wrapper state saved!")
+
+    
+   
+# Main script
+if __name__ == "__main__":
+    # Parse arguments
+    args = parse_args()
+
+    # Load the configuration (either from file or default)
+    CONFIG = load_config(args.config)
+
+    train(CONFIG)
+
+    
+
+    

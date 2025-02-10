@@ -6,7 +6,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 # Define a simple model to predict the next state
 class Dreamer(nn.Module):
-    def __init__(self, env, n_future_steps, action_space, observation_space, dreamer_save_path):
+    '''
+    Dreamer for Gymnasium MuJoCo tasks
+    '''
+    def __init__(self, env, n_future_steps, action_space, observation_space, policy_hidden_layers, dynamics_hidden_layers, dreamer_save_path):
         super(Dreamer, self).__init__()
         self.prediction_horizon = n_future_steps
 
@@ -18,36 +21,69 @@ class Dreamer(nn.Module):
         # self.observation_space
         dreamer_p_output_activation = self._get_dreamer_p_output(env.action_space)
         dreamer_d_output_activation = self._get_dreamer_d_output(env.observation_space)
+
+        self.action_scale = env.action_space.high[0]
+         
         #policy
 
-        self.dreamer_p = nn.Sequential(
-            nn.Linear(in_features=observation_space, out_features=128, bias=True),
-            nn.ELU(alpha=1.0),
-            nn.Linear(in_features=128, out_features=64, bias=True),
-            nn.ELU(alpha=1.0),
-            nn.Linear(in_features=64, out_features=action_space, bias=True),
+        # self.dreamer_p = nn.Sequential(
+        #     nn.Linear(in_features=observation_space, out_features=128, bias=True),
+        #     nn.ELU(alpha=1.0),
+        #     nn.Linear(in_features=128, out_features=64, bias=True),
+        #     nn.ELU(alpha=1.0),
+        #     nn.Linear(in_features=64, out_features=action_space, bias=True),
 
-            nn.Tanh() if dreamer_p_output_activation == "tanh" else nn.ELU()
-        )
+        #     nn.Tanh() if dreamer_p_output_activation == "tanh" else nn.ELU()
+        # )
+
+        p_layers = []
+        p_layers.append(nn.Linear(in_features=observation_space, out_features=policy_hidden_layers[0]))
+        p_layers.append(nn.ELU())
+        for l in range(len(policy_hidden_layers)):
+            if l == len(policy_hidden_layers) - 1:
+                p_layers.append(nn.Linear(policy_hidden_layers[l], action_space))
+                nn.Tanh() if dreamer_p_output_activation == "tanh" else nn.ELU()
+
+            else:
+                p_layers.append(nn.Linear(policy_hidden_layers[l], policy_hidden_layers[l + 1]))
+                p_layers.append(nn.ELU())
+        self.dreamer_p = nn.Sequential(*p_layers)
         
         #model of the environment
-        self.dreamer_d = nn.Sequential(
-            nn.Linear(in_features=action_space+observation_space, out_features=128, bias=True),
-            nn.ELU(alpha=1.0),
-            nn.Linear(in_features=128, out_features=64, bias=True),
-            nn.ELU(alpha=1.0),
-            nn.Linear(in_features=64, out_features=observation_space, bias=True),
-        )
+        # self.dreamer_d = nn.Sequential(
+        #     nn.Linear(in_features=action_space+observation_space, out_features=128, bias=True),
+        #     nn.ELU(alpha=1.0),
+        #     nn.Linear(in_features=128, out_features=64, bias=True),
+        #     nn.ELU(alpha=1.0),
+        #     nn.Linear(in_features=64, out_features=observation_space, bias=True),
+        # )
+
+        d_layers = []
+        d_layers.append(nn.Linear(in_features=observation_space+action_space, out_features=dynamics_hidden_layers[0]))
+        d_layers.append(nn.ELU())
+        for l in range(len(dynamics_hidden_layers)):
+            if l == len(dynamics_hidden_layers) - 1:
+                d_layers.append(nn.Linear(dynamics_hidden_layers[l], observation_space))
+
+            else:
+                d_layers.append(nn.Linear(dynamics_hidden_layers[l], dynamics_hidden_layers[l + 1]))
+                d_layers.append(nn.ELU())
+        self.dreamer_d = nn.Sequential(*d_layers)
 
         self.dreamer_optimizer = optim.Adam(self.parameters(), lr=1e-3)
         self.loss_metric = nn.MSELoss()
         self.update_count = 0
         # self.env_model_optimizer = optim.Adam(self.dreamer_d.parameters(), lr=1e-3)
 
-    def _get_dreamer_p_output(self, action_space):
+        print("dreamer dynamics model", self.dreamer_d)
+        print("dreamer policy", self.dreamer_p)
+
+    def _get_dreamer_p_output(self, action_space): #TODO Implement
+        # All Gymnasium Mujoco env action spaces are of type (-n, n), so tanh works for all
+        # Scale for n is added seperately
         return "tanh"
     
-    def _get_dreamer_d_output(self, obs_space):
+    def _get_dreamer_d_output(self, obs_space): #TODO implement
         return "relu"
     
     def forward(self, state):
@@ -64,7 +100,7 @@ class Dreamer(nn.Module):
             current_state = torch.from_numpy(state).float()
             for _ in range(self.prediction_horizon):
                 # Generate action from the policy model
-                action = self.dreamer_p(current_state)*0.4
+                action = self.dreamer_p(current_state)*self.action_scale
 
                 # Predict next state using the environment model
                 next_state = self.dreamer_d(torch.concatenate([action, current_state]))
@@ -93,7 +129,7 @@ class Dreamer(nn.Module):
         # Predict next state using the environment model
        
         predicted_next_obs = self.dreamer_d(torch.concatenate([action_batch, observation_batch], dim=-1))
-        predicted_actions = self.dreamer_p(observation_batch)*0.4
+        predicted_actions = self.dreamer_p(observation_batch)*self.action_scale
 
         # Environment model loss: MSE between predicted and actual next states
         env_model_loss = self.loss_metric(predicted_next_obs, next_obs_batch)

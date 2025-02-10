@@ -1,0 +1,36 @@
+name: None
+
+environment:
+  name: "HalfCheetah-v5"              # Name of the Gymnasium environment
+  wrapper: None      
+  n_future_steps: None         
+  n_steps: None      
+  history: None
+  p_hidden: [256, 256] #[16, 8]<--new #[256, 256] <-- this is original dim#17, 6
+  d_hidden: [512, 256, 128] #[64, 32]<--new #[512, 256, 128] <-- same #6+17, 17
+
+ppo_hyperparameters:
+  policy: 'MlpPolicy'
+  batch_size: 64
+  n_steps: 512
+  device: 'cpu'
+  gamma: 0.98
+  learning_rate: 2.0633e-05
+  ent_coef: 0.000401762
+  clip_range: 0.1
+  n_epochs: 20
+  gae_lambda: 0.92
+  max_grad_norm: 0.8
+  vf_coef: 0.58096
+  policy_kwargs:
+    log_std_init: -2
+    ortho_init: False
+    activation_fn: "ReLU"
+    net_arch:
+      pi: [256, 256]
+      vf: [256, 256]
+
+training:
+  seed: None
+  total_timesteps: 1000000   # Total number of timesteps to train the model
+  save_wrapper_state_path: "dreamer_state_dict.pth" # Path to save the dreamer model state

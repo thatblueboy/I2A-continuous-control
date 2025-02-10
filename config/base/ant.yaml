@@ -1,0 +1,29 @@
+expt_name: None
+
+environment:
+  name: "Ant-v4"               
+  wrapper: None      
+  n_future_steps: None         
+  n_steps: None      
+  history: None
+  p_hidden: [256, 128, 64, 32] 
+  d_hidden: [2048, 1024, 512]
+  
+ppo_hyperparameters:
+  policy: "MlpPolicy"          # The policy type (e.g., MlpPolicy, CnnPolicy, etc.)
+  n_steps: 512                 # Number of steps to collect before updating the model
+  batch_size: 32               # Batch size for training
+  gamma: 0.98                  # Discount factor for future rewards
+  learning_rate: 1.90609e-05   # Learning rate for the optimizer
+  ent_coef: 4.9646e-07         # Coefficient for the entropy term (regularization)
+  clip_range: 0.1              # The range for clipping during PPO optimization
+  n_epochs: 10                 # Number of epochs to update the model
+  gae_lambda: 0.8              # Lambda for Generalized Advantage Estimation (GAE)
+  max_grad_norm: 0.6           # Maximum gradient norm for clipping
+  vf_coef: 0.677239            # Coefficient for value function loss
+  verbose: 1                   # Verbosity level (0 = no output, 1 = training output)
+  device: "cpu"                # Device to run the model on (cpu or cuda for GPU)
+
+training:
+  total_timesteps: 10000000    # Total number of timesteps to train the model
+  save_wrapper_state_path: "dreamer_state_dict.pth" # Path to save the dreamer model state

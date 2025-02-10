@@ -1,0 +1,31 @@
+name: "no_dreamer"
+
+environment:
+  name: "HalfCheetah-v4"              # Name of the Gymnasium environment
+  wrapper: None       # Wrapper for the environment (e.g., DreamWrapper or None)
+  n_future_steps: 0        # Number of future steps for the wrapper (if using DreamWrapper)
+  n_steps: 1024                # Number of steps in each environment rollout (for training)
+
+ppo_hyperparameters:
+  policy: 'MlpPolicy'
+  batch_size: 64
+  n_steps: 512
+  gamma: 0.98
+  learning_rate: 2.0633e-05
+  ent_coef: 0.000401762
+  clip_range: 0.1
+  n_epochs: 20
+  gae_lambda: 0.92
+  max_grad_norm: 0.8
+  vf_coef: 0.58096
+  policy_kwargs:
+    log_std_init: -2
+    ortho_init: False
+    activation_fn: "ReLU"
+    net_arch:
+      pi: [256, 256]
+      vf: [256, 256]
+
+training:
+  total_timesteps: 10_00_000    # Total number of timesteps to train the model
+  save_wrapper_state_path: "dreamer_state_dict.pth" # Path to save the dreamer model state
