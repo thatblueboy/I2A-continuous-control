@@ -4,7 +4,7 @@ import subprocess
 from itertools import product
 
 CONFIG_DIR = "/home/thatblueboy/DOP/new_config"  # Update with the actual path to your config files
-SEEDS = [42] #[456, 3000, 7]#[100]#[42]  # List of seeds
+SEEDS = [7]  # List of seeds
 
 EXPERIMENTS = [
     {"wrapper": None, "history": 0, "n_future_steps": 0},
@@ -16,12 +16,16 @@ EXPERIMENTS = [
 
 OUTPUT_DIR = ""  # Update as needed
 
-# Iterate over all config files
-for config_file in os.listdir(CONFIG_DIR):
-    if not config_file.endswith(".yaml"):
-        continue
-    
-    config_path = os.path.join(CONFIG_DIR, config_file)
+# Specify a list of config files to use (empty list means use all available configs)
+SPECIFIC_CONFIGS = ["ant.yaml"]  # Example: ["config1.yaml", "config2.yaml"]
+
+# Get list of config files to process
+if SPECIFIC_CONFIGS:
+    config_files = [os.path.join(CONFIG_DIR, cfg) for cfg in SPECIFIC_CONFIGS]
+else:
+    config_files = [os.path.join(CONFIG_DIR, f) for f in os.listdir(CONFIG_DIR) if f.endswith(".yaml")]
+
+for config_path in config_files:
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)
     
@@ -45,7 +49,7 @@ for config_file in os.listdir(CONFIG_DIR):
             yaml.dump(config, temp_file)
         
         print(f"Running experiment: {exp_name}")
-        subprocess.run(["python", "train.py", "--config", temp_config_path])
+        subprocess.run(["python", "train_eval_callback.py", "--config", temp_config_path])
         os.remove(temp_config_path)
 
 print("All experiments completed!")

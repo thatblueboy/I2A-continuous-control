@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import gymnasium.spaces.box
 from torch.utils.tensorboard import SummaryWriter
+import logging
 
 # Define a simple model to predict the next state
 class Dreamer(nn.Module):
@@ -80,7 +81,7 @@ class Dreamer(nn.Module):
 
     def _get_dreamer_p_output(self, action_space): #TODO Implement
         # All Gymnasium Mujoco env action spaces are of type (-n, n), so tanh works for all
-        # Scale for n is added seperately
+        # Scale for n is added seperately during forward
         return "tanh"
     
     def _get_dreamer_d_output(self, obs_space): #TODO implement
@@ -123,6 +124,7 @@ class Dreamer(nn.Module):
         :param done_batch: Batch of done flags (torch tensor of shape [batch_size, 1])
         :return: Total loss for the update step
         """
+
         action_batch = torch.from_numpy(action_batch)
         observation_batch = torch.from_numpy(observation_batch)
         next_obs_batch = torch.from_numpy(next_obs_batch)

@@ -4,13 +4,14 @@ from env.dreamer import Dreamer
 from env.buffer import Buffer
 from gymnasium.core import ObsType
 import torch
-
+import logging
 
 class DreamWrapper(gym.Wrapper):
     def __init__(self, env, history_len:int=0, 
                  n_future_steps:int=2, 
                  n_steps:int = 512, 
                  n_steps_dreamer:int = 512, 
+                 dreamer_batch_size:int = 64,
                  eval:bool=False, 
                  policy_hidden_layers:list=[128, 64],
                  dynamics_hidden_layers:list=[128, 64],
@@ -33,7 +34,7 @@ class DreamWrapper(gym.Wrapper):
                                    dynamics_hidden_layers,
                                    dreamer_save_path)
             self.n_steps_dreamer = n_steps #update dreamer using same policy
-            self.buffer = Buffer(buffer_size=n_steps_dreamer, batch_size=64)
+            self.buffer = Buffer(buffer_size=n_steps_dreamer, batch_size=dreamer_batch_size)
             self.dreamer_epochs = 5
             self.dreaming = True
             print("Dreaming:", self.dreaming)
@@ -85,23 +86,28 @@ class DreamWrapper(gym.Wrapper):
         return np.concatenate([self.obs_buffer, future_predictions]), info
         
     def dream_step(self, action):
+        
         if not self.eval:
-            if self.counter == self.n_steps_dreamer:
+            if self.counter == self.n_steps_dreamer: #update first, call step later so that policy is the first to be updated
+                # logging.debug("Updating dreamer!")
                 for i in range(self.dreamer_epochs):
                     for state_batch, action_batch, reward_batch, next_state_batch, done_batch in self.buffer.generate_batches():
                         self.dreamer.update(state_batch, action_batch, reward_batch, next_state_batch, done_batch)
                 self.buffer.reset()
                 self.counter=0
-
+   
         next_state, reward, done, truncated, info = self.env.step(action)
       
         future_predictions = self.dreamer(next_state)
+       
         if not self.eval:
-            self.buffer.collect(self.state, action, reward, next_state, done)
             self.counter += 1
+            self.buffer.collect(self.state, action, reward, next_state, done)
+            # logging.debug('SARS collected for dreamer these many times: %d', self.counter)
 
         self.state = next_state
         self.obs_buffer = np.concatenate([self.obs_buffer[:-self.obs_dim], next_state])
+            
         # print(self.obs_buffer.shape)
         return np.concatenate([self.obs_buffer, future_predictions]), reward, done, truncated, info
 
