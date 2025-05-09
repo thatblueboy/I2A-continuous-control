@@ -3,21 +3,21 @@ import yaml
 import subprocess
 from itertools import product
 
-CONFIG_DIR = "/home/thatblueboy/DOP/new_config"  # Update with the actual path to your config files
-SEEDS = [7]  # List of seeds
+CONFIG_DIR = "/media/thatblueboy/Seagate/DOP/config"  # Update with the actual path to your config files
+SEEDS = [7, 56, 456, 992, 5000] #[7, 56, 456, 992, 5000]  # List of seeds
 
 EXPERIMENTS = [
-    {"wrapper": None, "history": 0, "n_future_steps": 0},
-    {"wrapper": None, "history": 2, "n_future_steps": 0},
-    {"wrapper": None, "history": 5, "n_future_steps": 0},
+    # {"wrapper": None, "history": 0, "n_future_steps": 0},
+    # {"wrapper": None, "history": 2, "n_future_steps": 0},
+    # {"wrapper": None, "history": 5, "n_future_steps": 0}
     {"wrapper": "DreamWrapper", "history": 0, "n_future_steps": 2},
-    {"wrapper": "DreamWrapper", "history": 0, "n_future_steps": 5},
+    # {"wrapper": "DreamWrapper", "history": 0, "n_future_steps": 5},
 ]
 
 OUTPUT_DIR = ""  # Update as needed
 
 # Specify a list of config files to use (empty list means use all available configs)
-SPECIFIC_CONFIGS = ["ant.yaml"]  # Example: ["config1.yaml", "config2.yaml"]
+SPECIFIC_CONFIGS = ["walker_2d.yaml"]  # Example: ["config1.yaml", "config2.yaml"]
 
 # Get list of config files to process
 if SPECIFIC_CONFIGS:
@@ -30,6 +30,7 @@ for config_path in config_files:
         config = yaml.safe_load(file)
     
     env_name = config["environment"]["name"]
+    # env_name = env_name + 
     
     for exp, seed in product(EXPERIMENTS, SEEDS):
         config["environment"]["wrapper"] = exp["wrapper"]
@@ -38,18 +39,18 @@ for config_path in config_files:
         config["training"]["seed"] = seed
         
         if exp["wrapper"] == "DreamWrapper":
-            exp_name = f"dreamer_{exp['n_future_steps']}_{seed}"
+            exp_name = f"dreamer_{exp['n_future_steps']}_{seed+3}"
         else:
-            exp_name = f"no_dreamer_{exp['history']}_{seed}"
+            exp_name = f"no_dreamer_{exp['history']}_{seed+3}"
         
         config["expt_name"] = exp_name
         
         temp_config_path = os.path.join(OUTPUT_DIR, f"temp_{exp_name}.yaml")
         with open(temp_config_path, "w") as temp_file:
             yaml.dump(config, temp_file)
-        
+
         print(f"Running experiment: {exp_name}")
-        subprocess.run(["python", "train_eval_callback.py", "--config", temp_config_path])
+        subprocess.run(["python", "train.py", "--config", temp_config_path])
         os.remove(temp_config_path)
 
 print("All experiments completed!")

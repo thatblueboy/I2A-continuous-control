@@ -17,14 +17,14 @@ class Dreamer(nn.Module):
         action_space = env.action_space.shape[0]
         observation_space = env.observation_space.shape[0]
         
-        self.writer = SummaryWriter(dreamer_save_path)
+        if dreamer_save_path is not None:
+            self.writer = SummaryWriter(dreamer_save_path)
 
         # self.observation_space
         dreamer_p_output_activation = self._get_dreamer_p_output(env.action_space)
         dreamer_d_output_activation = self._get_dreamer_d_output(env.observation_space)
 
         self.action_scale = env.action_space.high[0]
-         
         #policy
 
         # self.dreamer_p = nn.Sequential(
@@ -71,7 +71,7 @@ class Dreamer(nn.Module):
                 d_layers.append(nn.ELU())
         self.dreamer_d = nn.Sequential(*d_layers)
 
-        self.dreamer_optimizer = optim.Adam(self.parameters(), lr=1e-3)
+        self.dreamer_optimizer = optim.Adam(self.parameters(), lr=1e-4)
         self.loss_metric = nn.MSELoss()
         self.update_count = 0
         # self.env_model_optimizer = optim.Adam(self.dreamer_d.parameters(), lr=1e-3)
@@ -79,12 +79,12 @@ class Dreamer(nn.Module):
         print("dreamer dynamics model", self.dreamer_d)
         print("dreamer policy", self.dreamer_p)
 
-    def _get_dreamer_p_output(self, action_space): #TODO Implement
+    def _get_dreamer_p_output(self, action_space):
         # All Gymnasium Mujoco env action spaces are of type (-n, n), so tanh works for all
         # Scale for n is added seperately during forward
         return "tanh"
     
-    def _get_dreamer_d_output(self, obs_space): #TODO implement
+    def _get_dreamer_d_output(self, obs_space):
         return "relu"
     
     def forward(self, state):
@@ -140,6 +140,11 @@ class Dreamer(nn.Module):
 
         self.dreamer_optimizer.zero_grad()
         loss.backward()
+
+        # Apply gradient clipping
+        torch.nn.utils.clip_grad_norm_(self.dreamer_d.parameters(), max_norm=0.5)
+        torch.nn.utils.clip_grad_norm_(self.dreamer_p.parameters(), max_norm=0.5)
+
         self.dreamer_optimizer.step()
 
         # Log metrics to TensorBoard

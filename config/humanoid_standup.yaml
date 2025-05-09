@@ -1,0 +1,35 @@
+name: none
+
+environment:
+  name: "HumanoidStandup-v5"       # Name of the Gymnasium environment
+  wrapper: None                     # Wrapper for the environment (e.g., DreamWrapper or None)
+  n_future_steps: None               # Number of future steps for the wrapper (if using DreamWrapper)
+  n_steps: None                      # Number of steps in each environment rollout (for training)
+  history: None
+  batch_size: 512
+  p_hidden: [512, 512]
+  d_hidden: [512, 512, 256] #348+17 ---> 348
+
+ppo_hyperparameters:
+  policy: 'MlpPolicy'
+  batch_size: 512
+  n_steps: 8192                      # Increased to handle long episodes
+  device: 'cpu'
+  gamma: 0.995                        # Higher discount factor for long-term rewards
+  learning_rate: 0.0003                 # Slightly increased learning rate
+  ent_coef: 0.01
+  clip_range: 0.2
+  n_epochs: 10
+  gae_lambda: 0.95
+  vf_coef: 0.5                        # Higher value function coefficient
+  # max_grad_norm: 2
+  verbose: 1
+  policy_kwargs:
+    log_std_init: -2
+    ortho_init: False
+    activation_fn: "ReLU"
+
+training:
+  total_timesteps: 10_000_000         # Total number of timesteps to train the model
+  save_wrapper_state_path: "dreamer_state_dict.pth" # Path to save the dreamer model state
+  eval_freq: 250_000

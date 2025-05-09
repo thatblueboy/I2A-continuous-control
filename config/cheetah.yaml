@@ -11,12 +11,13 @@ environment:
   d_hidden: [512, 256, 128] #[64, 32]<--new #[512, 256, 128] <-- same #6+17, 17
 
 ppo_hyperparameters:
+
   policy: 'MlpPolicy'
   batch_size: 64
   n_steps: 512
   device: 'cpu'
   gamma: 0.98
-  learning_rate: 2.0633e-05
+  learning_rate: 2.0633e-5
   ent_coef: 0.000401762
   clip_range: 0.1
   n_epochs: 20
@@ -33,5 +34,6 @@ ppo_hyperparameters:
 
 training:
   seed: None
-  total_timesteps: 1000000   # Total number of timesteps to train the model
+  total_timesteps: 15_00_000   # Total number of timesteps to train the model
+  eval_freq: 25_000      
   save_wrapper_state_path: "dreamer_state_dict.pth" # Path to save the dreamer model state

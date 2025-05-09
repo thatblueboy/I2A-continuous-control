@@ -15,7 +15,7 @@ class DreamWrapper(gym.Wrapper):
                  eval:bool=False, 
                  policy_hidden_layers:list=[128, 64],
                  dynamics_hidden_layers:list=[128, 64],
-                 dreamer_save_path='runs'):
+                 dreamer_save_path=None):
         '''
         n_future_steps: number of future predictions by dreamer
         n_steps: update dreamer after these many step() calls. Also equal to buffer length
@@ -56,36 +56,37 @@ class DreamWrapper(gym.Wrapper):
         self.n_steps = n_steps
         self.eval = eval
         self.counter = 0
-        print(history_len)
         self.obs_buf_size = history_len+1
         self.obs_buffer = np.zeros((self.obs_buf_size*self.obs_dim))
+        # self.reset()
+
+    def add_gaussian_noise(self, obs, mean=0.0, std=0.0):
+       noise = np.random.normal(mean, std, size=obs.shape)
+       return obs + noise
 
     def dream_less_reset(self, **kwargs):
         state, info = super().reset(**kwargs)
         self.state = state
         self.obs_buffer = np.repeat(state, self.obs_buf_size)
-        # print("shape", self.obs_buffer.shape)
         return self.obs_buffer, info
     
-    def dream_less_step(self, action):
+    def dream_less_step(self, action, mean=0, std=0):
         next_state, reward, done, truncated, info = self.env.step(action)
+        next_state = self.add_gaussian_noise(next_state, mean, std)
         self.state = next_state
         self.obs_buffer = np.concatenate([self.obs_buffer[:-self.obs_dim], next_state])
-        # print(self.obs_buffer.shape)
         return self.obs_buffer, reward, done, truncated, info
 
     def dream_reset(self, **kwargs):
-        # print(kwargs)
         state, info = super().reset(**kwargs)
 
         future_predictions = self.dreamer(state)
        
         self.state = state
         self.obs_buffer = np.repeat(state, self.obs_buf_size)
-        # print("shape", self.obs_buffer.shape)
         return np.concatenate([self.obs_buffer, future_predictions]), info
         
-    def dream_step(self, action):
+    def dream_step(self, action, mean=0, std=0):
         
         if not self.eval:
             if self.counter == self.n_steps_dreamer: #update first, call step later so that policy is the first to be updated
@@ -97,6 +98,7 @@ class DreamWrapper(gym.Wrapper):
                 self.counter=0
    
         next_state, reward, done, truncated, info = self.env.step(action)
+        next_state = self.add_gaussian_noise(next_state, mean, std)
       
         future_predictions = self.dreamer(next_state)
        

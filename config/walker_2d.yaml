@@ -1,27 +1,28 @@
-name: None
+name: none
 
 environment:
-  name: "HalfCheetah-v5"              # Name of the Gymnasium environment
+  name: "Walker2d-v5"             
   wrapper: None      
   n_future_steps: None         
-  n_steps: None      
+  n_steps: None    
+  batch_size: 64  
   history: None
   p_hidden: [256, 256] #[16, 8]<--new #[256, 256] <-- this is original dim#17, 6
   d_hidden: [512, 256, 128] #[64, 32]<--new #[512, 256, 128] <-- same #6+17, 17
 
 ppo_hyperparameters:
   policy: 'MlpPolicy'
-  batch_size: 64
+  batch_size: 32
   n_steps: 512
   device: 'cpu'
-  gamma: 0.98
-  learning_rate: 2.0633e-05
-  ent_coef: 0.000401762
+  gamma: 0.99
+  learning_rate: 2.0e-05 #2.0e-06 #5.05041e-05
+  ent_coef: 0.000585045
   clip_range: 0.1
   n_epochs: 20
-  gae_lambda: 0.92
-  max_grad_norm: 0.8
-  vf_coef: 0.58096
+  gae_lambda: 0.95
+  max_grad_norm: 1
+  vf_coef: 0.6 #0.871923
   policy_kwargs:
     log_std_init: -2
     ortho_init: False
@@ -32,5 +33,6 @@ ppo_hyperparameters:
 
 training:
   seed: None
-  total_timesteps: 1000000   # Total number of timesteps to train the model
-  save_wrapper_state_path: "dreamer_state_dict.pth" # Path to save the dreamer model state
+  total_timesteps: 20_00_000   
+  eval_freq: 25_000      
+  save_wrapper_state_path: "dreamer_state_dict.pth" # Save model path
